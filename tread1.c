@@ -40,4 +40,5 @@ int main() {
 
     // Após criar e esperar todos os filhos, o pai encerra
     exit(0);
+    //processo meu filho
 }
