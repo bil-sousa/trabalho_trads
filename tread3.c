@@ -1,3 +1,8 @@
+#include <unistd.h>      // Biblioteca para fork(), execlp(), getpid(), getppid()
+#include <stdio.h>       // Biblioteca para printf(), perror()
+#include <stdlib.h>      // Biblioteca para exit()
+#include <sys/types.h>   // Define tipos como pid_t (usado em fork)
+
 int main() {
     int pid;  // Variável que receberá o retorno do fork()
 
