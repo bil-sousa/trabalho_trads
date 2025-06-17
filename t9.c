@@ -1,95 +1,70 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
-#include <sys/wait.h>
-#include <pthread.h>
+#include <unistd.h>     // fork(), getpid(), getppid()
+#include <stdio.h>      // printf(), scanf()
+#include <stdlib.h>     // exit()
+#include <sys/types.h>  // pid_t
+#include <sys/wait.h>   // wait()
+#include <pthread.h>    // pthread_create, pthread_join
+#include <time.h>       // clock()
 
-#define N 1000
 #define RODADAS 20
+#define NUM_FILHOS 10  // quantidade de filhos ou threads
 
-int vetor[N];
-
-// Gera vetor aleatório
-void gerar_vetor(int v[]) {
-    for (int i = 0; i < N; i++)
-        v[i] = rand() % 10000;
+void tarefa_filho(int i) {
+    printf("[%d] -> sou %5d, filho de %5d\n", i, getpid(), getppid());
 }
 
-// Bubble Sort
-void bubble_sort(int v[]) {
-    for (int i = 0; i < N - 1; i++) {
-        for (int j = 0; j < N - i - 1; j++) {
-            if (v[j] > v[j + 1]) {
-                int tmp = v[j];
-                v[j] = v[j + 1];
-                v[j + 1] = tmp;
-            }
-        }
-    }
-}
-
-// ------------------ Threads ------------------
-
-void* thread_sort(void* arg) {
-    int* v = (int*)arg;
-    bubble_sort(v);
+void* thread_func(void* arg) {
+    int i = *((int*)arg);
+    tarefa_filho(i);
     return NULL;
 }
 
-double testar_threads() {
-    double total = 0.0;
-    for (int i = 0; i < RODADAS; i++) {
-        int v[N];
-        gerar_vetor(v);
-
-        pthread_t tid;
-        clock_t start = clock();
-
-        pthread_create(&tid, NULL, thread_sort, v);
-        pthread_join(tid, NULL);
-
-        clock_t end = clock();
-        total += (double)(end - start) / CLOCKS_PER_SEC;
-    }
-    return total / RODADAS;
-}
-
-// ------------------ Processos ------------------
-
-double testar_processos() {
-    double total = 0.0;
-    for (int i = 0; i < RODADAS; i++) {
-        int v[N];
-        gerar_vetor(v);
-
-        clock_t start = clock();
-
-        pid_t pid = fork();
-        if (pid == 0) {
-            // Filho
-            bubble_sort(v);
-            exit(0);
-        } else {
-            // Pai
-            wait(NULL);
-            clock_t end = clock();
-            total += (double)(end - start) / CLOCKS_PER_SEC;
-        }
-    }
-    return total / RODADAS;
-}
-
 int main() {
-    srand(time(NULL));
-    
-    double tempo_threads = testar_threads();
-    double tempo_processos = testar_processos();
+    double tempo_fork_total = 0, tempo_thread_total = 0;
 
-    printf("\nTempo médio com Threads:   %.6f segundos\n", tempo_threads);
-    printf("Tempo médio com Processos: %.6f segundos\n", tempo_processos);
+    for (int rodada = 0; rodada < RODADAS; rodada++) {
+        // --- FORK ---
+        clock_t start_fork = clock();
+        for (int i = 0; i < NUM_FILHOS; i++) {
+            pid_t pid = fork();
+            if (pid < 0) {
+                perror("Erro ao criar processo");
+                exit(1);
+            }
+            if (pid == 0) {
+                tarefa_filho(i);
+                exit(0);
+            } else {
+                wait(NULL);
+            }
+        }
+        clock_t end_fork = clock();
+        tempo_fork_total += (double)(end_fork - start_fork) / CLOCKS_PER_SEC;
+
+        // --- THREADS ---
+        pthread_t threads[NUM_FILHOS];
+        int indices[NUM_FILHOS];
+
+        clock_t start_thread = clock();
+        for (int i = 0; i < NUM_FILHOS; i++) {
+            indices[i] = i;
+            if (pthread_create(&threads[i], NULL, thread_func, &indices[i]) != 0) {
+                perror("Erro ao criar thread");
+                exit(1);
+            }
+        }
+
+        for (int i = 0; i < NUM_FILHOS; i++) {
+            pthread_join(threads[i], NULL);
+        }
+        clock_t end_thread = clock();
+        tempo_thread_total += (double)(end_thread - start_thread) / CLOCKS_PER_SEC;
+    }
+
+    // RESULTADOS
+    printf("\n===== RESULTADOS MÉDIOS APÓS %d RODADAS =====\n", RODADAS);
+    printf("Média tempo com fork():   %.8f segundos\n", tempo_fork_total / RODADAS);
+    printf("Média tempo com threads(): %.8f segundos\n", tempo_thread_total / RODADAS);
 
     return 0;
 }
-/*codigo adaptdo para medir o tempo médio de execução
- usando fork() (processos) e pthread (threads).*/
