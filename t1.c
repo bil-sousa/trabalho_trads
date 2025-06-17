@@ -32,11 +32,14 @@ int main() {
             exit(0);
         } else {
             // Código executado pelo processo pai
+            
 
             // Pai espera o filho terminar antes de continuar
             wait(NULL);
         }
     }
+
+    printf("tchau do papai\n");
 
     // Após criar e esperar todos os filhos, o pai encerra
     exit(0);
