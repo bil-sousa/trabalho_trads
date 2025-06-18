@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
 
 void* thread_func(void* arg) {
     pause(); // A thread fica "dormindo"
